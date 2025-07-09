@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class NetIO implements Net {
+public class NetIO  {
     private Socket socket;
     private BufferedReader reader;
     private BufferedWriter writer;
@@ -19,7 +19,7 @@ public class NetIO implements Net {
 
     private Timer heartbeatTimer;
 
-    @Override
+
     public boolean connect(String host, int port) {
         this.host = host;
         this.port = port;
@@ -42,7 +42,7 @@ public class NetIO implements Net {
         }
     }
 
-    @Override
+
     public boolean send(String message) {
         if (!connected || writer == null) return false;
         try {
@@ -57,7 +57,7 @@ public class NetIO implements Net {
         }
     }
 
-    @Override
+
     public void startListening() {
         listenThread = new Thread(() -> {
             while (true) {
@@ -89,7 +89,7 @@ public class NetIO implements Net {
     }
 
 
-    @Override
+
     public void onMessage(String message) {
         SwingUtilities.invokeLater(() -> {
             // 将消息添加到 ChatUI 的界面中
@@ -98,7 +98,7 @@ public class NetIO implements Net {
     }
 
 
-    @Override
+
     public void sendHeartbeat() {
         if (isConnected()) {
             send("{\"type\":\"heartbeat\"}");
@@ -118,14 +118,14 @@ public class NetIO implements Net {
         }, 5000, 10000); // 5秒后启动，每10秒发送一次
     }
 
-    @Override
+
     public boolean reconnect() {
         disconnect();
         System.out.println("尝试重连...");
         return connect(host, port);
     }
 
-    @Override
+
     public void disconnect() {
         try {
             connected = false;
@@ -138,7 +138,7 @@ public class NetIO implements Net {
         }
     }
 
-    @Override
+
     public boolean isConnected() {
         return connected && socket != null && socket.isConnected() && !socket.isClosed();
     }
