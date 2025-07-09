@@ -151,6 +151,7 @@ public class Chat {
                                 JsonObject data = JsonParser.parseString(jsonStr).getAsJsonObject();
                                 long time = data.get("time").getAsLong();
                                 ChatUI.getInstance().ReceiveMessage(message.getSender(), message.getMessage(),time);
+                                ChatUI.getInstance().setContactNewInform(message.getSender());
                             }
                     );
 
@@ -187,7 +188,7 @@ public class Chat {
                                 JsonObject data=JsonParser.parseString(jsonStr).getAsJsonObject();
                                 if(data.has("status") &&data.get("status").getAsString().equals("ok")){
                                     String username=data.get("message").getAsString();
-                                    ChatUI.getInstance().addContact(username,0);
+                                    ChatUI.getInstance().addContact(username,"default_2.jpg",0);
                                     JOptionPane.showMessageDialog(ChatUI.getInstance(), "添加成功！现在可以和他对话了", "添加成功", JOptionPane.INFORMATION_MESSAGE);
 
                                 }else{

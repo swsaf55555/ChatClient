@@ -60,8 +60,6 @@ public class ChatUI extends JFrame {
         addFriend.addActionListener(e -> {
             String username = JOptionPane.showInputDialog(this, "请输入对方用户名：");
             if (username == null || username.trim().isEmpty()) return;
-
-
             addContactToList(username.trim());
         });
 
@@ -184,7 +182,6 @@ public class ChatUI extends JFrame {
         splitPane.setOneTouchExpandable(true);
         getContentPane().add(splitPane);
     }
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ChatUI.getInstance().setVisible(true);
@@ -193,7 +190,7 @@ public class ChatUI extends JFrame {
             AppState app = AppState.getInstance();
 
             // 加载所有聊天记录
-            Map<String, List<Message>> histories = ChatHistory.loadAll();
+            Map<String, List<Message>> histories = ChatHistory.loadAll(AppState.getInstance().getCurrentUser().getUsername());
             for (Map.Entry<String, List<Message>> entry : histories.entrySet()) {
                 for (Message msg : entry.getValue()) {
                     app.addMessage(entry.getKey(), msg);
@@ -206,15 +203,16 @@ public class ChatUI extends JFrame {
         });
     }
 
+
     private void addContactToList(String username) {
         // 检查是否已存在该联系人
-        for (int i = 0; i < contactsModel.size(); i++) {
-            Contact c = contactsModel.getElementAt(i);
-            if (c.name.equals(username)) {
-                JOptionPane.showMessageDialog(this, "该人已存在联系人列表中！");
-                return;
-            }
-        }
+//        for (int i = 0; i < contactsModel.size(); i++) {
+//            Contact c = contactsModel.getElementAt(i);
+//            if (c.name.equals(username)) {
+//                JOptionPane.showMessageDialog(this, "该人已存在联系人列表中！");
+//                return;
+//            }
+//        }
 
         // 添加联系人（默认头像 & 未读数为 0）
         ImageIcon avatar = loadAvatar("default_2.jpg");
@@ -303,7 +301,7 @@ public class ChatUI extends JFrame {
                     1
                     );
             AppState.getInstance().addMessage(contactName, message);
-            ChatHistory.saveHistory(contactName, AppState.getInstance().getMessages(contactName));
+            ChatHistory.saveHistory(AppState.getInstance().getCurrentUser().getUsername(),contactName, AppState.getInstance().getMessages(contactName));
             Chat.sendPrivateMessage(contactName,text);
             // 滚动到底部
             if (chatScrollPane != null) {
@@ -505,37 +503,77 @@ public class ChatUI extends JFrame {
     }
 
     public  void ReceiveMessage(String fromName, String message) {
+        boolean received=false;
         Message message1 = new Message(fromName,AppState.getInstance().getCurrentUser().getUsername(),message,1);
         AppState.getInstance().addMessage(fromName, message1);
-        ChatHistory.saveHistory(fromName, AppState.getInstance().getMessages(fromName));
+        ChatHistory.saveHistory(AppState.getInstance().getCurrentUser().getUsername(),fromName, AppState.getInstance().getMessages(fromName));
         if (fromName.equals(currentContactName)) {
             addMessageBubble(fromName, message, false);
+            received=true;
         } else {
             for (int i = 0; i < contactsModel.getSize(); i++) {
                 Contact c = contactsModel.getElementAt(i);
                 if (c.name.equals(fromName)) {
+                    received=true;
                     c.unreadCount++;
                     break;
                 }
             }
             contactsList.repaint();
         }
+        if(!received){
+            addContact(fromName,"default_1.jpg",1);
+            if (fromName.equals(currentContactName)) {
+                addMessageBubble(fromName, message, false);
+                received=true;
+            } else {
+                for (int i = 0; i < contactsModel.getSize(); i++) {
+                    Contact c = contactsModel.getElementAt(i);
+                    if (c.name.equals(fromName)) {
+                        received=true;
+                        c.unreadCount++;
+                        break;
+                    }
+                }
+                contactsList.repaint();
+            }
+        }
     }
     public  void ReceiveMessage(String fromName, String message,long time) {
+        boolean received=false;
         Message message1 = new Message(fromName,AppState.getInstance().getCurrentUser().getUsername(),message,1);
         AppState.getInstance().addMessage(fromName, message1);
-        ChatHistory.saveHistory(fromName, AppState.getInstance().getMessages(fromName));
+        ChatHistory.saveHistory(AppState.getInstance().getCurrentUser().getUsername(),fromName, AppState.getInstance().getMessages(fromName));
         if (fromName.equals(currentContactName)) {
             addMessageBubble(fromName, message, false,time);
+            received=true;
         } else {
             for (int i = 0; i < contactsModel.getSize(); i++) {
                 Contact c = contactsModel.getElementAt(i);
                 if (c.name.equals(fromName)) {
+                    received=true;
                     c.unreadCount++;
                     break;
                 }
             }
             contactsList.repaint();
+        }
+        if(!received){
+            addContact(fromName,"default_1.jpg",1);
+            if (fromName.equals(currentContactName)) {
+                addMessageBubble(fromName, message, false,time);
+                received=true;
+            } else {
+                for (int i = 0; i < contactsModel.getSize(); i++) {
+                    Contact c = contactsModel.getElementAt(i);
+                    if (c.name.equals(fromName)) {
+                        received=true;
+                        c.unreadCount++;
+                        break;
+                    }
+                }
+                contactsList.repaint();
+            }
         }
     }
     public void updateTile(String title){
@@ -546,7 +584,31 @@ public class ChatUI extends JFrame {
         return sdf.format(new java.util.Date(millis));
     }
     public void addContact(String name,int unreadCount){
+        for (int i = 0; i < contactsModel.getSize(); i++) {
+            Contact c = contactsModel.getElementAt(i);
+            if (c.name.equals(name)) {
+                contactsModel.removeElement(c);
+            }
+        }
         contactsModel.addElement(new Contact(name,loadAvatar("default_2.jpg"),unreadCount));
+    }
+    public void addContact(String name,String avatar,int unreadCount){
+        for (int i = 0; i < contactsModel.getSize(); i++) {
+            Contact c = contactsModel.getElementAt(i);
+            if (c.name.equals(name)) {
+                contactsModel.removeElement(c);
+            }
+        }
+        contactsModel.addElement(new Contact(name,loadAvatar(avatar),unreadCount));
+    }
+    public void setContactNewInform(String name){
+        for (int i = 0; i < contactsModel.getSize(); i++) {
+            Contact c = contactsModel.getElementAt(i);
+            if (c.name.equals(name)) {
+                c.unreadCount++;
+                break;
+            }
+        }
     }
     public void setOffline(){
         online=false;
