@@ -7,48 +7,62 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
+
+import chat.Chat;
+import com.google.gson.JsonParser;
 import io.ChatHistory;
+import io.NetIO;
 import model.*;
 
 public class ChatUI extends JFrame {
-    private String currentContactName = null;
-    private DefaultListModel<Contact> contactsModel;
-    private JList<Contact> contactsList;
+    private  String currentContactName;
+    private  DefaultListModel<Contact> contactsModel;
+    private  JList<Contact> contactsList;
     private JPanel chatPanel;
-    private JPanel chatContentPanel;
+    private  JPanel chatContentPanel;
     private JTextArea inputArea;
-    private JScrollPane chatScrollPane; // 新增变量：用于滚动到底部
-    private long lastMessageTime = 0; // 用于控制时间戳显示
+    private  JScrollPane chatScrollPane; // 新增变量：用于滚动到底部
+    private  long lastMessageTime = 0; // 用于控制时间戳显示
+    private static ChatUI instance=new ChatUI();
+    private static boolean online=false;
 
-    public ChatUI() {
+    public static ChatUI getInstance() {
+        if (instance == null) instance = new ChatUI();
+        return instance;
+    }
+
+    public static void resetInstance() {
+        instance = null;
+    }
+
+    private ChatUI() {
         setTitle("聊天系统");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 600);
         setLocationRelativeTo(null);
-        try{
+        try {
             ImageIcon icon = new ImageIcon(getClass().getResource("/default_2.jpg"));
             setIconImage(icon.getImage());
-        }catch(Exception e){
+        } catch (Exception e) {
             System.out.println("加载ico失败");
         }
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         JMenuBar menuBar = new JMenuBar();
         JMenu menu = new JMenu("操作");
         JMenuItem myInformation = new JMenuItem("我的个人信息");
         JMenuItem addFriend = new JMenuItem("添加联系人");
-        JMenuItem logout=new JMenuItem("退出登录");
+        JMenuItem logout = new JMenuItem("退出登录");
 
         addFriend.addActionListener(e -> {
             String username = JOptionPane.showInputDialog(this, "请输入对方用户名：");
             if (username == null || username.trim().isEmpty()) return;
 
-            String remark = JOptionPane.showInputDialog(this, "请输入备注名：");
-            if (remark == null || remark.trim().isEmpty()) return;
 
-            addContactToList(username.trim(), remark.trim());
+            addContactToList(username.trim());
         });
 
         myInformation.addActionListener(e ->
@@ -57,6 +71,24 @@ public class ChatUI extends JFrame {
                         AppState.getInstance().getCurrentUser().getNickname()
                 })
         );
+        logout.addActionListener(
+                e->{
+                    Chat.sendLogout(AppState.getInstance().getCurrentUser().getUsername(),
+                            AppState.getInstance().getCurrentUser().getPasswd());
+
+                    NetIO.getInstance().disconnect();
+                    NetIO.resetInstance();
+                    // 清除用户状态
+                    AppState.getInstance().setCurrentUser(null);
+                    AppState.getInstance().setNetIO(null);
+                    AppState.resetInstance();
+                    // 返回登录界面
+                    new LoginUI().setVisible(true);
+                    // 关闭主界面
+                    ChatUI.getInstance().dispose();
+                    ChatUI.resetInstance();
+                }
+        );
         menu.add(myInformation);
         menu.add(addFriend);
         menu.add(logout);
@@ -64,12 +96,12 @@ public class ChatUI extends JFrame {
         setJMenuBar(menuBar);
 
         contactsModel = new DefaultListModel<>();
-        contactsModel.addElement(new Contact("Alice", loadAvatar("default_1.jpg"), 2));
-        contactsModel.addElement(new Contact("Bob", loadAvatar("default_1.jpg"), 0));
-        contactsModel.addElement(new Contact("Charlie", loadAvatar("default_2.jpg"), 5));
-        for (int i = 4; i <= 20; i++) {
-            contactsModel.addElement(new Contact("联系人" + i, loadAvatar("default_2.jpg"), (i % 3 == 0) ? 1 : 0));
-        }
+//        contactsModel.addElement(new Contact("admin", loadAvatar("default_1.jpg"), 2));
+//        contactsModel.addElement(new Contact("username", loadAvatar("default_1.jpg"), 0));
+//        contactsModel.addElement(new Contact("Charlie", loadAvatar("default_2.jpg"), 5));
+//        for (int i = 4; i <= 20; i++) {
+//            contactsModel.addElement(new Contact("联系人" + i, loadAvatar("default_2.jpg"), (i % 3 == 0) ? 1 : 0));
+//        }
 
         contactsList = new JList<>(contactsModel);
         contactsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -139,6 +171,7 @@ public class ChatUI extends JFrame {
                 Contact selected = contactsList.getSelectedValue();
                 if (selected != null) {
                     selected.unreadCount = 0;
+                    currentContactName=selected.name;
                     updateChatPanel(selected.name);
                     loadHistoryToChatPanel(selected.name);
                     contactsList.repaint();
@@ -151,22 +184,42 @@ public class ChatUI extends JFrame {
         splitPane.setOneTouchExpandable(true);
         getContentPane().add(splitPane);
     }
-    private void addContactToList(String username, String remark) {
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            ChatUI.getInstance().setVisible(true);
+            // 登录成功后执行
+            Chat.sendRequestContacts(AppState.getInstance().getCurrentUser().getUsername());
+            AppState app = AppState.getInstance();
+
+            // 加载所有聊天记录
+            Map<String, List<Message>> histories = ChatHistory.loadAll();
+            for (Map.Entry<String, List<Message>> entry : histories.entrySet()) {
+                for (Message msg : entry.getValue()) {
+                    app.addMessage(entry.getKey(), msg);
+                }
+            }
+            ChatUI.getInstance().setOline();
+            // 模拟 3 秒后收到一条消息
+//            new Timer(3000, e -> ui.simulateReceiveMessage("Alice", "你好这是一条模拟消息！")).start();
+//            new Timer(5000, e -> ui.simulateReceiveMessage("联系人5", "你好这是一条模拟消息！")).start();
+        });
+    }
+
+    private void addContactToList(String username) {
         // 检查是否已存在该联系人
         for (int i = 0; i < contactsModel.size(); i++) {
             Contact c = contactsModel.getElementAt(i);
-            if (c.name.equals(remark)) {
-                JOptionPane.showMessageDialog(this, "该备注名已存在联系人列表中！");
+            if (c.name.equals(username)) {
+                JOptionPane.showMessageDialog(this, "该人已存在联系人列表中！");
                 return;
             }
         }
 
         // 添加联系人（默认头像 & 未读数为 0）
         ImageIcon avatar = loadAvatar("default_2.jpg");
-        Contact newContact = new Contact(remark, avatar, 0);
-        contactsModel.addElement(newContact);
-
-        JOptionPane.showMessageDialog(this, "成功添加联系人：" + remark);
+        Contact newContact = new Contact(username, avatar, 0);
+        Chat.sendAddFriend(AppState.getInstance().getCurrentUser().getUsername(),username);
     }
 
     private void updateChatPanel(String contactName) {
@@ -199,7 +252,7 @@ public class ChatUI extends JFrame {
                 }
             });
 
-            JButton sendButton =  new JButton("发送") {
+            JButton sendButton = new JButton("发送") {
                 @Override
                 protected void paintComponent(Graphics g) {
                     g.setColor(getModel().isRollover() ? new Color(230, 230, 230) : Color.WHITE);
@@ -234,23 +287,33 @@ public class ChatUI extends JFrame {
     }
 
     private void sendMessage(String contactName) {
+        if(!online){
+            JOptionPane.showMessageDialog(this, "当前处于离线状态，不能发送消息！" , "发送失败", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         String text = inputArea.getText().trim();
         if (!text.isEmpty()) {
             addMessageBubble("我", text, true);
             inputArea.setText("");
             // 状态保存
-            Message message=new Message("chat","ok",text,"111",contactName);
+            Message message = new Message(
+                    AppState.getInstance().getCurrentUser().getUsername(),
+                    contactName,
+                    text,
+                    1
+                    );
             AppState.getInstance().addMessage(contactName, message);
             ChatHistory.saveHistory(contactName, AppState.getInstance().getMessages(contactName));
+            Chat.sendPrivateMessage(contactName,text);
             // 滚动到底部
             if (chatScrollPane != null) {
                 JScrollBar vertical = chatScrollPane.getVerticalScrollBar();
-                SwingUtilities.invokeLater(() -> vertical.setValue(vertical.getMaximum()+100));
+                SwingUtilities.invokeLater(() -> vertical.setValue(vertical.getMaximum() + 100));
             }
         }
     }
 
-    private void addMessageBubble(String sender, String message, boolean isSender) {
+    private  void addMessageBubble(String sender, String message, boolean isSender) {
         long currentTime = System.currentTimeMillis();
 
         // 如果与上一条消息相隔超过1分钟，显示时间戳
@@ -277,8 +340,8 @@ public class ChatUI extends JFrame {
         if (panelWidth <= 0) {
             panelWidth = 300; // 还没布局好时，给个默认宽度避免出错
         }
-        int maxWidth = (int)(panelWidth * 0.9);
-        int minWidth = (int)(panelWidth * 0.05);
+        int maxWidth = (int) (panelWidth * 0.9);
+        int minWidth = (int) (panelWidth * 0.05);
 
         FontMetrics fm = msgLabel.getFontMetrics(msgLabel.getFont());
         // 计算整段文字宽度（像素）
@@ -293,7 +356,6 @@ public class ChatUI extends JFrame {
         // 设置 JTextArea 的最大和首选尺寸
         msgLabel.setMaximumSize(new Dimension(textWidth, Integer.MAX_VALUE));
         msgLabel.setPreferredSize(new Dimension(textWidth, msgLabel.getPreferredSize().height));
-
 
 
         JPanel bubble = new JPanel(new BorderLayout());
@@ -324,25 +386,20 @@ public class ChatUI extends JFrame {
 
             if (isAtBottom) {
                 // 在底部则滚动到底
-                SwingUtilities.invokeLater(() -> vertical.setValue(value+extent+50));
+                SwingUtilities.invokeLater(() -> vertical.setValue(value + extent + 50));
             }
         }
 
     }
 
-    private void addMessageBubble(String sender, String message, boolean isSender, long timestamp) {
+    private  void addMessageBubble(String sender, String message, boolean isSender, long timestamp) {
         long currentTime = System.currentTimeMillis();
-
-        // 如果与历史消息相隔超过1分钟，显示时间戳
-        if (currentTime - timestamp >= 60_000) {
-            JLabel timeLabel = new JLabel(getCurrentTime(timestamp));
-            timeLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-            timeLabel.setForeground(Color.GRAY);
-            timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // 居中显示
-            chatContentPanel.add(timeLabel);
-            lastMessageTime = currentTime; // 更新时间戳
-        }
-
+        JLabel timeLabel = new JLabel(getCurrentTime(timestamp));
+        timeLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        timeLabel.setForeground(Color.GRAY);
+        timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // 居中显示
+        chatContentPanel.add(timeLabel);
+        lastMessageTime = currentTime; // 更新时间戳
         // 消息气泡（动态宽度）
         JTextArea msgLabel = new JTextArea(message);
         msgLabel.setWrapStyleWord(true);
@@ -357,8 +414,8 @@ public class ChatUI extends JFrame {
         if (panelWidth <= 0) {
             panelWidth = 300; // 还没布局好时，给个默认宽度避免出错
         }
-        int maxWidth = (int)(panelWidth * 0.9);
-        int minWidth = (int)(panelWidth * 0.05);
+        int maxWidth = (int) (panelWidth * 0.9);
+        int minWidth = (int) (panelWidth * 0.05);
 
         FontMetrics fm = msgLabel.getFontMetrics(msgLabel.getFont());
         // 计算整段文字宽度（像素）
@@ -373,7 +430,6 @@ public class ChatUI extends JFrame {
         // 设置 JTextArea 的最大和首选尺寸
         msgLabel.setMaximumSize(new Dimension(textWidth, Integer.MAX_VALUE));
         msgLabel.setPreferredSize(new Dimension(textWidth, msgLabel.getPreferredSize().height));
-
 
 
         JPanel bubble = new JPanel(new BorderLayout());
@@ -404,7 +460,7 @@ public class ChatUI extends JFrame {
 
             if (isAtBottom) {
                 // 在底部则滚动到底
-                SwingUtilities.invokeLater(() -> vertical.setValue(value+extent+50));
+                SwingUtilities.invokeLater(() -> vertical.setValue(value + extent + 50));
             }
         }
 
@@ -415,10 +471,9 @@ public class ChatUI extends JFrame {
         //lastMessageTime = 0;           // 重置时间戳（用于判断是否显示时间）
 
         List<Message> history = AppState.getInstance().getMessages(targetUser);
-        String currentUsername = "111";
 
         for (Message msg : history) {
-            boolean isSender = msg.getSender().equals(currentUsername);
+            boolean isSender = msg.getSender().equals(AppState.getInstance().getCurrentUser().getUsername());
             addMessageBubble(msg.getSender(), msg.getMessage(), isSender, msg.getTimestamp());
         }
 
@@ -449,9 +504,8 @@ public class ChatUI extends JFrame {
         }
     }
 
-
-    public void simulateReceiveMessage(String fromName, String message) {
-        Message message1=new Message("chat","ok",message,fromName,"111");
+    public  void ReceiveMessage(String fromName, String message) {
+        Message message1 = new Message(fromName,AppState.getInstance().getCurrentUser().getUsername(),message,1);
         AppState.getInstance().addMessage(fromName, message1);
         ChatHistory.saveHistory(fromName, AppState.getInstance().getMessages(fromName));
         if (fromName.equals(currentContactName)) {
@@ -467,13 +521,41 @@ public class ChatUI extends JFrame {
             contactsList.repaint();
         }
     }
-    private String getCurrentTime(long millis) {
+    public  void ReceiveMessage(String fromName, String message,long time) {
+        Message message1 = new Message(fromName,AppState.getInstance().getCurrentUser().getUsername(),message,1);
+        AppState.getInstance().addMessage(fromName, message1);
+        ChatHistory.saveHistory(fromName, AppState.getInstance().getMessages(fromName));
+        if (fromName.equals(currentContactName)) {
+            addMessageBubble(fromName, message, false,time);
+        } else {
+            for (int i = 0; i < contactsModel.getSize(); i++) {
+                Contact c = contactsModel.getElementAt(i);
+                if (c.name.equals(fromName)) {
+                    c.unreadCount++;
+                    break;
+                }
+            }
+            contactsList.repaint();
+        }
+    }
+    public void updateTile(String title){
+        this.setTitle(title);
+    }
+    private static String getCurrentTime(long millis) {
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy年MM月dd日 HH:mm");
         return sdf.format(new java.util.Date(millis));
     }
-
-
-
+    public void addContact(String name,int unreadCount){
+        contactsModel.addElement(new Contact(name,loadAvatar("default_2.jpg"),unreadCount));
+    }
+    public void setOffline(){
+        online=false;
+        updateTile(AppState.getInstance().getCurrentUser().getUsername()+" - 离线");
+    }
+    public void setOline(){
+        online=true;
+        updateTile(AppState.getInstance().getCurrentUser().getUsername()+" - 在线");
+    }
     class Contact {
         String name;
         ImageIcon avatar;
@@ -489,26 +571,5 @@ public class ChatUI extends JFrame {
         public String toString() {
             return name;
         }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            ChatUI ui = new ChatUI();
-            ui.setVisible(true);
-            // 登录成功后执行
-            AppState app = AppState.getInstance();
-
-            // 加载所有聊天记录
-            Map<String, List<Message>> histories = ChatHistory.loadAll();
-            for (Map.Entry<String, List<Message>> entry : histories.entrySet()) {
-                for (Message msg : entry.getValue()) {
-                    app.addMessage(entry.getKey(), msg);
-                }
-            }
-
-            // 模拟 3 秒后收到一条消息
-//            new Timer(3000, e -> ui.simulateReceiveMessage("Alice", "你好这是一条模拟消息！")).start();
-//            new Timer(5000, e -> ui.simulateReceiveMessage("联系人5", "你好这是一条模拟消息！")).start();
-        });
     }
 }

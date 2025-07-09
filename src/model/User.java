@@ -4,6 +4,7 @@ public class User {
     private String username;     // 用户名（唯一标识）
     private String nickname;     // 昵称（显示用）
     private String avatarPath;   // 头像路径（本地文件名或网络 URL）
+    private String passwd="";
     private boolean online;      // 是否在线
 
 
@@ -12,12 +13,24 @@ public class User {
         this.nickname = username;  // 默认昵称与用户名相同
         this.online = true;
     }
+    public User(String username,String passwd){
+        this.username = username;
+        this.nickname = username;  // 默认昵称与用户名相同
+        this.passwd=passwd;
+        this.online = true;
+    }
 
     // 可选：带头像/昵称构造器
     public User(String username, String nickname, String avatarPath, boolean online, String status) {
         this.username = username;
         this.nickname = nickname;
         this.avatarPath = avatarPath;
+        this.online = online;
+    }
+    // 可选：带头像/昵称构造器
+    public User(String username, String nickname,  boolean online, String status) {
+        this.username = username;
+        this.nickname = nickname;
         this.online = online;
     }
 
@@ -49,5 +62,9 @@ public class User {
 
     public void setOnline(boolean online) {
         this.online = online;
+    }
+
+    public String getPasswd() {
+        return passwd;
     }
 }

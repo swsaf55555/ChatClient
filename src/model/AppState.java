@@ -1,6 +1,7 @@
 package model;
 
 import io.NetIO;
+import ui.ChatUI;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,13 +10,13 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AppState {
-    private static final AppState instance = new AppState();
+    private static  AppState instance = new AppState();
 
     private User currentUser;
     private final List<User> onlineUsers;
     private final Map<String, List<Message>> messageHistory;
 
-    private NetIO netIO; // ✅ 新增字段
+    private NetIO netIO; //
 
     private AppState() {
         onlineUsers = new CopyOnWriteArrayList<>();
@@ -23,10 +24,15 @@ public class AppState {
     }
 
     public static AppState getInstance() {
+        if (instance == null) instance = new AppState();
         return instance;
     }
 
-    // ✅ 新增 NetIO 管理方法
+    public static void resetInstance() {
+        instance = null;
+    }
+
+    //  新增 NetIO 管理方法
     public void setNetIO(NetIO netIO) {
         this.netIO = netIO;
     }

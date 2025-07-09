@@ -1,7 +1,11 @@
 package ui;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
+
+import chat.Chat;
+import com.google.gson.JsonParser;
 import io.*;
 import model.AppState;
 import model.Message;
@@ -16,16 +20,17 @@ public class LoginUI extends JFrame {
         setResizable(false);
         setUndecorated(false); // 保留关闭按钮
         setMaximumSize(new Dimension(420, 360));
-        try{
+        try {
             ImageIcon icon = new ImageIcon(getClass().getResource("/default_2.jpg"));
             setIconImage(icon.getImage());
-        }catch(Exception e){
+        } catch (Exception e) {
             System.out.println("加载ico失败");
         }
 
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         JPanel mainPanel = new JPanel();
         mainPanel.setBackground(Color.WHITE);
@@ -67,31 +72,43 @@ public class LoginUI extends JFrame {
 
         Font labelFont = new Font("微软雅黑", Font.PLAIN, 14);
 
-        gbc.gridx = 0; gbc.gridy = 0;
-        formPanel.add(new JLabel("服务器 IP:", JLabel.LEFT) {{ setFont(labelFont); }}, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        formPanel.add(new JLabel("服务器 IP:", JLabel.LEFT) {{
+            setFont(labelFont);
+        }}, gbc);
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         formPanel.add(ipField, gbc);
-        gbc.gridx = 0; gbc.gridy = 1;
-        formPanel.add(new JLabel("端口号:", JLabel.LEFT) {{ setFont(labelFont); }}, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        formPanel.add(new JLabel("端口号:", JLabel.LEFT) {{
+            setFont(labelFont);
+        }}, gbc);
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         formPanel.add(portField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 2;
-        formPanel.add(new JLabel("用户名:", JLabel.LEFT) {{ setFont(labelFont); }}, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        formPanel.add(new JLabel("用户名:", JLabel.LEFT) {{
+            setFont(labelFont);
+        }}, gbc);
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         formPanel.add(usernameField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 3;
-        formPanel.add(new JLabel("密码:", JLabel.LEFT) {{ setFont(labelFont); }}, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        formPanel.add(new JLabel("密码:", JLabel.LEFT) {{
+            setFont(labelFont);
+        }}, gbc);
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -136,41 +153,61 @@ public class LoginUI extends JFrame {
 
         loginButton.setPreferredSize(new Dimension(100, 36));
         registerButton.setPreferredSize(new Dimension(100, 36));
-        NetIO netIO=new NetIO();
         loginButton.addActionListener(e -> {
-            loginButton.disable();
+            // 禁用按钮防止重复点击
+            loginButton.setEnabled(false);
+
             String ip = ipField.getText().trim();
             String port = portField.getText().trim();
             String username = usernameField.getText().trim();
             String password = new String(passwordField.getPassword()).trim();
 
+            // 空值检查
             if (ip.isEmpty() || port.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "IP 和端口号不能为空", "提示", JOptionPane.WARNING_MESSAGE);
+                loginButton.setEnabled(true); // 恢复按钮
                 return;
             }
 
             if (username.isEmpty() || password.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "用户名和密码不能为空", "提示", JOptionPane.WARNING_MESSAGE);
+                loginButton.setEnabled(true); // 恢复按钮
                 return;
             }
 
-            if(netIO.connect(ip,Integer.parseInt(port))){
-                if (netIO.connectAndLogin(ip, Integer.parseInt(port), username, password)) {
-                    AppState.getInstance().setNetIO(netIO);
-                    AppState.getInstance().setCurrentUser(new User(username));
-                    ChatUI.main(null); // 登录成功
-                } else {
-                    JOptionPane.showMessageDialog(this, "用户名或密码错误", "登录失败", JOptionPane.ERROR_MESSAGE);
-                    netIO.disconnect();
-                    loginButton.enable();
+            // 开线程处理连接和登录逻辑，避免阻塞UI
+            new Thread(() -> {
+                try {
+                    if (NetIO.getInstance().connect(ip, Integer.parseInt(port))) {
+                        if (NetIO.getInstance().connectAndLogin(ip, Integer.parseInt(port), username, password)) {
+                            AppState.getInstance().setNetIO(NetIO.getInstance());
+                            AppState.getInstance().setCurrentUser(new User(username,password));
+                            SwingUtilities.invokeLater(() -> {
+                                ChatUI.main(null); // 登录成功进入主界面
+                                dispose(); // 关闭登录窗口
+                            });
+                        } else {
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(this, "用户名或密码错误", "登录失败", JOptionPane.ERROR_MESSAGE);
+                                NetIO.getInstance().disconnect();
+                                loginButton.setEnabled(true); // 恢复按钮
+                            });
+                        }
+                    } else {
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(this, "无法连接到你填写的服务器", "登录失败", JOptionPane.ERROR_MESSAGE);
+                            loginButton.setEnabled(true); // 恢复按钮
+                        });
+                    }
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this, "登录异常：" + ex.getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+                        loginButton.setEnabled(true); // 恢复按钮
+                    });
                 }
-            }else{
-                JOptionPane.showMessageDialog(this, "无法连接到你填写的服务器", "登陆失败", JOptionPane.ERROR_MESSAGE);
-                loginButton.enable();
-            }
-
-
+            }).start();
         });
+
         // 添加回车触发登录
         // 定义一个ActionListener，触发登录按钮点击
         ActionListener enterListener = e -> loginButton.doClick();
@@ -181,9 +218,62 @@ public class LoginUI extends JFrame {
         passwordField.addActionListener(enterListener);
 
 
+        registerButton.addActionListener(e -> {
+            String ip = ipField.getText().trim();
+            String port = portField.getText().trim();
+            if (ip.isEmpty() || port.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "请先填写 IP 和端口", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            String regUsername = JOptionPane.showInputDialog(this, "请输入注册用户名：");
+            if (regUsername == null || regUsername.trim().isEmpty()) return;
+
+            String regPassword = JOptionPane.showInputDialog(this, "请输入注册密码：");
+            if (regPassword == null || regPassword.trim().isEmpty()) return;
+
+            // 禁用注册按钮，避免重复点击
+            registerButton.setEnabled(false);
+
+            // 开新线程执行注册逻辑
+            new Thread(() -> {
+                try {
+                    if (!NetIO.getInstance().isConnected()) {
+                        if (!NetIO.getInstance().connect(ip, Integer.parseInt(port))) {
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(this, "连接服务器失败", "注册失败", JOptionPane.ERROR_MESSAGE);
+                                registerButton.setEnabled(true); // 恢复按钮
+                            });
+                            return;
+                        }
+                    }
+
+                    Chat.sendRegister(regUsername, regPassword);
+
+                    String reply = NetIO.getInstance().receive();
+                    Message response = new Message(JsonParser.parseString(reply).getAsJsonObject());
+
+                    SwingUtilities.invokeLater(() -> {
+                        if ("ok".equals(response.getStatus()) && "create".equals(response.getMessage())) {
+                            JOptionPane.showMessageDialog(this, "注册成功！现在可以登录了", "成功", JOptionPane.INFORMATION_MESSAGE);
+                        } else {
+                            JOptionPane.showMessageDialog(this, "注册失败：" + response.getMessage(), "注册失败", JOptionPane.ERROR_MESSAGE);
+                        }
+                        registerButton.setEnabled(true); // 恢复按钮
+                    });
+
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this, "注册失败：" + ex.getMessage(), "注册异常", JOptionPane.ERROR_MESSAGE);
+                        registerButton.setEnabled(true); // 恢复按钮
+                    });
+                } finally {
+                    NetIO.getInstance().disconnect();
+                }
+            }).start();
+        });
 
 
-        registerButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "注册功能暂未实现"));
 
         buttonPanel.add(loginButton);
         buttonPanel.add(registerButton);
@@ -195,7 +285,7 @@ public class LoginUI extends JFrame {
         add(mainPanel);
     }
 
-public static void main(String[] args) {
+    public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new LoginUI().setVisible(true));
-        }
+    }
 }
