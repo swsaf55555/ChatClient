@@ -1,14 +1,21 @@
 package model;
 
-import java.util.*;
+import io.NetIO;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AppState {
     private static final AppState instance = new AppState();
 
-    private User currentUser;  // 当前登录的用户
-    private final List<User> onlineUsers;  // 在线用户列表
-    private final Map<String, List<Message>> messageHistory; // 与每位用户的聊天记录
+    private User currentUser;
+    private final List<User> onlineUsers;
+    private final Map<String, List<Message>> messageHistory;
+
+    private NetIO netIO; // ✅ 新增字段
 
     private AppState() {
         onlineUsers = new CopyOnWriteArrayList<>();
@@ -17,6 +24,15 @@ public class AppState {
 
     public static AppState getInstance() {
         return instance;
+    }
+
+    // ✅ 新增 NetIO 管理方法
+    public void setNetIO(NetIO netIO) {
+        this.netIO = netIO;
+    }
+
+    public NetIO getNetIO() {
+        return netIO;
     }
 
     // 当前用户

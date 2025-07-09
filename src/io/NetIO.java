@@ -1,5 +1,9 @@
 package io;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import model.Message;
+
 import javax.swing.*;
 import java.io.*;
 import java.net.*;
@@ -142,4 +146,42 @@ public class NetIO  {
     public boolean isConnected() {
         return connected && socket != null && socket.isConnected() && !socket.isClosed();
     }
+    // 用于阻塞式接收一行消息（例如登录阶段）
+    public String receive() throws IOException {
+        if (reader != null && connected) {
+            //System.out.println(reader.readLine());
+            return reader.readLine();
+        }
+        return null;
+    }
+
+    public boolean connectAndLogin(String host, int port, String username, String password) {
+        this.host = host;
+        this.port = port;
+        try {
+            socket = new Socket(host, port);
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+            writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
+
+            // 发送登录请求
+            Message loginMsg = new Message("login", username, password, true);
+            send(loginMsg.toJson());
+
+            // 接收响应
+
+            JsonObject responseJson=JsonParser.parseString(receive()).getAsJsonObject();
+            Message response = new Message(responseJson);
+            System.out.println("statu:"+response.getStatus()+response.getMessage());
+            if ("ok".equals(response.getStatus()) && "login".equals(response.getMessage())) {
+                connected = true;
+                startListening();
+                startHeartbeat();
+                return true;
+            }
+        } catch (IOException e) {
+            System.err.println("登录失败：" + e.getMessage());
+        }
+        return false;
+    }
+
 }

@@ -9,9 +9,12 @@ public class InformationUI extends JFrame {
     private JTextField usernameField, nicknameField, friendCountField;
     private JButton editButton, saveButton, okButton;
     private boolean isEditing = false;
-    private String nickName = "竹子";
+    private  String nickName;
+    private  String username;
 
-    public InformationUI() {
+    public InformationUI(String username,String nickName) {
+        this.nickName=nickName;
+        this.username=username;
         setTitle("个人信息");
         setSize(420, 300);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -43,11 +46,11 @@ public class InformationUI extends JFrame {
 
         Font labelFont = new Font("微软雅黑", Font.PLAIN, 14);
 
-        usernameField = new JTextField("2025001");
+        usernameField = new JTextField(username);
         nicknameField = new JTextField(nickName);
         friendCountField = new JTextField("12");
 
-        JTextField[] fields = {usernameField, nicknameField, friendCountField};
+        JTextField[] fields = {usernameField, nicknameField};
         for (JTextField field : fields) {
             field.setFont(labelFont);
             field.setPreferredSize(new Dimension(320, 36));
@@ -71,12 +74,12 @@ public class InformationUI extends JFrame {
         formPanel.add(nicknameField, gbc);
 
         gbc.gridx = 0; gbc.gridy = 2;
-        formPanel.add(new JLabel("好友数量:") {{ setFont(labelFont); }}, gbc);
+        //formPanel.add(new JLabel("好友数量:") {{ setFont(labelFont); }}, gbc);
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
-        formPanel.add(friendCountField, gbc);
+        //formPanel.add(friendCountField, gbc);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBackground(Color.WHITE);
@@ -108,7 +111,7 @@ public class InformationUI extends JFrame {
                 JOptionPane.showMessageDialog(this, "昵称不能为空", "提示", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            nickName = newNickname;
+            this.nickName = newNickname;
             nicknameField.setEditable(false);
             isEditing = false;
             saveButton.setVisible(false);
@@ -151,6 +154,6 @@ public class InformationUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new InformationUI().setVisible(true));
+        SwingUtilities.invokeLater(() -> new InformationUI(args[0],args[1]).setVisible(true));
     }
 }

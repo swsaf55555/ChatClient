@@ -10,7 +10,15 @@ public class Message {
     private String sender;    // 发送者用户名
     private String target;    // 接收者（用户名或群组）
     private long timestamp;   // 时间戳
-
+    private String username="";
+    private String passwd="";
+    boolean send=false;
+    public Message(String type,String username,String passwd,boolean send){
+        this.type=type;
+        this.username=username;
+        this.passwd=passwd;
+        this.send=true;
+    }
     public Message(String type, String status, String message) {
         this.type = type;
         this.status = status;
@@ -31,17 +39,27 @@ public class Message {
         this.sender = json.has("sender") ? json.get("sender").getAsString() : "";
         this.target = json.has("target") ? json.get("target").getAsString() : "";
         this.timestamp = json.has("timestamp") ? json.get("timestamp").getAsLong() : System.currentTimeMillis();
+
     }
 
     public JsonObject toJsonObject() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", type);
-        json.addProperty("status", status);
-        json.addProperty("message", message);
-        json.addProperty("sender", sender);
-        json.addProperty("target", target);
-        json.addProperty("timestamp", timestamp);
-        return json;
+        if(send){
+            JsonObject json = new JsonObject();
+            json.addProperty("type", type);
+            json.addProperty("username", username);
+            json.addProperty("passwd", passwd);
+            return json;
+        }else{
+            JsonObject json = new JsonObject();
+            json.addProperty("type", type);
+            json.addProperty("status", status);
+            json.addProperty("message", message);
+            json.addProperty("sender", sender);
+            json.addProperty("target", target);
+            json.addProperty("timestamp", timestamp);
+            return json;
+        }
+
     }
 
     public String toJson() {

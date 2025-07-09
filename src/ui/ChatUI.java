@@ -4,6 +4,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.List;
+import io.ChatHistory;
+import model.*;
 
 public class ChatUI extends JFrame {
     private String currentContactName = null;
@@ -46,7 +51,12 @@ public class ChatUI extends JFrame {
             addContactToList(username.trim(), remark.trim());
         });
 
-        myInformation.addActionListener(e -> InformationUI.main(null));
+        myInformation.addActionListener(e ->
+                InformationUI.main(new String[]{
+                        AppState.getInstance().getCurrentUser().getUsername(),
+                        AppState.getInstance().getCurrentUser().getNickname()
+                })
+        );
         menu.add(myInformation);
         menu.add(addFriend);
         menu.add(logout);
@@ -73,6 +83,7 @@ public class ChatUI extends JFrame {
 
                 JLabel avatarLabel;
                 if (contact.unreadCount > 0) {
+
                     avatarLabel = new JLabel() {
                         @Override
                         protected void paintComponent(Graphics g) {
@@ -123,11 +134,13 @@ public class ChatUI extends JFrame {
         updateChatPanel(null);
 
         contactsList.addListSelectionListener(e -> {
+
             if (!e.getValueIsAdjusting()) {
                 Contact selected = contactsList.getSelectedValue();
                 if (selected != null) {
                     selected.unreadCount = 0;
                     updateChatPanel(selected.name);
+                    loadHistoryToChatPanel(selected.name);
                     contactsList.repaint();
                 }
             }
@@ -225,6 +238,10 @@ public class ChatUI extends JFrame {
         if (!text.isEmpty()) {
             addMessageBubble("我", text, true);
             inputArea.setText("");
+            // 状态保存
+            Message message=new Message("chat","ok",text,"111",contactName);
+            AppState.getInstance().addMessage(contactName, message);
+            ChatHistory.saveHistory(contactName, AppState.getInstance().getMessages(contactName));
             // 滚动到底部
             if (chatScrollPane != null) {
                 JScrollBar vertical = chatScrollPane.getVerticalScrollBar();
@@ -313,6 +330,101 @@ public class ChatUI extends JFrame {
 
     }
 
+    private void addMessageBubble(String sender, String message, boolean isSender, long timestamp) {
+        long currentTime = System.currentTimeMillis();
+
+        // 如果与历史消息相隔超过1分钟，显示时间戳
+        if (currentTime - timestamp >= 60_000) {
+            JLabel timeLabel = new JLabel(getCurrentTime(timestamp));
+            timeLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+            timeLabel.setForeground(Color.GRAY);
+            timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // 居中显示
+            chatContentPanel.add(timeLabel);
+            lastMessageTime = currentTime; // 更新时间戳
+        }
+
+        // 消息气泡（动态宽度）
+        JTextArea msgLabel = new JTextArea(message);
+        msgLabel.setWrapStyleWord(true);
+        msgLabel.setLineWrap(true);
+        msgLabel.setEditable(false);
+        msgLabel.setFont(new Font("微软雅黑", Font.PLAIN, 14));
+        msgLabel.setBackground(isSender ? new Color(179, 229, 252) : new Color(200, 230, 201));
+        msgLabel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+
+        // 计算最大宽度为聊天面板宽度的90%
+        int panelWidth = chatContentPanel.getWidth();
+        if (panelWidth <= 0) {
+            panelWidth = 300; // 还没布局好时，给个默认宽度避免出错
+        }
+        int maxWidth = (int)(panelWidth * 0.9);
+        int minWidth = (int)(panelWidth * 0.05);
+
+        FontMetrics fm = msgLabel.getFontMetrics(msgLabel.getFont());
+        // 计算整段文字宽度（像素）
+        int textPixelWidth = fm.stringWidth(message);
+
+        // 给文字宽度加点内边距，左右各加一个汉字长度
+        int padding = fm.stringWidth("我") * 2;
+
+        // 计算最终气泡宽度，限制在最大和最小范围内
+        int textWidth = Math.min(maxWidth, Math.max(minWidth, textPixelWidth + padding));
+
+        // 设置 JTextArea 的最大和首选尺寸
+        msgLabel.setMaximumSize(new Dimension(textWidth, Integer.MAX_VALUE));
+        msgLabel.setPreferredSize(new Dimension(textWidth, msgLabel.getPreferredSize().height));
+
+
+
+        JPanel bubble = new JPanel(new BorderLayout());
+        bubble.add(msgLabel, BorderLayout.CENTER);
+        bubble.setBackground(Color.white);
+        JPanel container = new JPanel(new FlowLayout(isSender ? FlowLayout.RIGHT : FlowLayout.LEFT));
+        container.setBackground(Color.white);
+        container.add(bubble);
+
+        chatContentPanel.add(container);
+        chatContentPanel.revalidate();
+
+//        // 滚动到底部
+//        if (chatScrollPane != null) {
+//            JScrollBar vertical = chatScrollPane.getVerticalScrollBar();
+//            SwingUtilities.invokeLater(() -> vertical.setValue(vertical.getMaximum()));
+//        }
+
+
+        // 判断是否已经在底部
+        if (chatScrollPane != null) {
+            JScrollBar vertical = chatScrollPane.getVerticalScrollBar();
+            int value = vertical.getValue();
+            int extent = vertical.getModel().getExtent();
+            int max = vertical.getMaximum();
+
+            boolean isAtBottom = (value + extent) >= (max - 20); // 容差设置为20像素
+
+            if (isAtBottom) {
+                // 在底部则滚动到底
+                SwingUtilities.invokeLater(() -> vertical.setValue(value+extent+50));
+            }
+        }
+
+    }
+
+    private void loadHistoryToChatPanel(String targetUser) {
+        //chatContentPanel.removeAll();  // 清空旧内容
+        //lastMessageTime = 0;           // 重置时间戳（用于判断是否显示时间）
+
+        List<Message> history = AppState.getInstance().getMessages(targetUser);
+        String currentUsername = "111";
+
+        for (Message msg : history) {
+            boolean isSender = msg.getSender().equals(currentUsername);
+            addMessageBubble(msg.getSender(), msg.getMessage(), isSender, msg.getTimestamp());
+        }
+
+        //chatContentPanel.revalidate();
+        //chatContentPanel.repaint();
+    }
 
     private ImageIcon loadAvatar(String path) {
         try {
@@ -339,6 +451,9 @@ public class ChatUI extends JFrame {
 
 
     public void simulateReceiveMessage(String fromName, String message) {
+        Message message1=new Message("chat","ok",message,fromName,"111");
+        AppState.getInstance().addMessage(fromName, message1);
+        ChatHistory.saveHistory(fromName, AppState.getInstance().getMessages(fromName));
         if (fromName.equals(currentContactName)) {
             addMessageBubble(fromName, message, false);
         } else {
@@ -380,10 +495,20 @@ public class ChatUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             ChatUI ui = new ChatUI();
             ui.setVisible(true);
+            // 登录成功后执行
+            AppState app = AppState.getInstance();
+
+            // 加载所有聊天记录
+            Map<String, List<Message>> histories = ChatHistory.loadAll();
+            for (Map.Entry<String, List<Message>> entry : histories.entrySet()) {
+                for (Message msg : entry.getValue()) {
+                    app.addMessage(entry.getKey(), msg);
+                }
+            }
 
             // 模拟 3 秒后收到一条消息
-            new Timer(1000, e -> ui.simulateReceiveMessage("Alice", "你好这是一条模拟消息！")).start();
-            new Timer(1000, e -> ui.simulateReceiveMessage("联系人4", "你好这是一条模拟消息！")).start();
+//            new Timer(3000, e -> ui.simulateReceiveMessage("Alice", "你好这是一条模拟消息！")).start();
+//            new Timer(5000, e -> ui.simulateReceiveMessage("联系人5", "你好这是一条模拟消息！")).start();
         });
     }
 }

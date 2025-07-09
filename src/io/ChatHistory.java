@@ -7,7 +7,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public class ChatHistoryManager {
+public class ChatHistory {
     private static final String HISTORY_DIR = "logs";  // 所有聊天记录文件存放目录
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 

@@ -50,5 +50,4 @@ public class User {
     public void setOnline(boolean online) {
         this.online = online;
     }
-
 }

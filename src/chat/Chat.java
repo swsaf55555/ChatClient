@@ -1,5 +1,4 @@
 package chat;
 
-public interface Chat {
-
+public class Chat {
 }

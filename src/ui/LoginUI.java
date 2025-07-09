@@ -3,6 +3,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import io.*;
+import model.AppState;
+import model.Message;
+import model.User;
 
 public class LoginUI extends JFrame {
     public LoginUI() {
@@ -133,8 +136,9 @@ public class LoginUI extends JFrame {
 
         loginButton.setPreferredSize(new Dimension(100, 36));
         registerButton.setPreferredSize(new Dimension(100, 36));
-
+        NetIO netIO=new NetIO();
         loginButton.addActionListener(e -> {
+            loginButton.disable();
             String ip = ipField.getText().trim();
             String port = portField.getText().trim();
             String username = usernameField.getText().trim();
@@ -150,12 +154,22 @@ public class LoginUI extends JFrame {
                 return;
             }
 
-            if (username.equals("2025001") && password.equals("123456")) {
-                dispose();
-                ChatUI.main(null);
-            } else {
-                JOptionPane.showMessageDialog(this, "用户名或密码错误", "登录失败", JOptionPane.ERROR_MESSAGE);
+            if(netIO.connect(ip,Integer.parseInt(port))){
+                if (netIO.connectAndLogin(ip, Integer.parseInt(port), username, password)) {
+                    AppState.getInstance().setNetIO(netIO);
+                    AppState.getInstance().setCurrentUser(new User(username));
+                    ChatUI.main(null); // 登录成功
+                } else {
+                    JOptionPane.showMessageDialog(this, "用户名或密码错误", "登录失败", JOptionPane.ERROR_MESSAGE);
+                    netIO.disconnect();
+                    loginButton.enable();
+                }
+            }else{
+                JOptionPane.showMessageDialog(this, "无法连接到你填写的服务器", "登陆失败", JOptionPane.ERROR_MESSAGE);
+                loginButton.enable();
             }
+
+
         });
         // 添加回车触发登录
         // 定义一个ActionListener，触发登录按钮点击
