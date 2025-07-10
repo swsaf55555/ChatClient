@@ -28,3 +28,5 @@ bin/
 ### Mac OS ###
 .DS_Store
 /logs/
+resources/META-INF/MANIFEST.MF
+.idea/artifacts/ChatClient_jar.xml

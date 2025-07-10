@@ -8,15 +8,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class ChatHistory {
-    private static final String HISTORY_ROOT = "logs"; // 根目录
+    // 修改后的根目录为：我的文档\ChatClient\logs
+    private static final String HISTORY_ROOT = new File(
+            new File(System.getProperty("user.home"), "Documents"), "ChatClient/logs"
+    ).getAbsolutePath();
+
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     // 保存聊天记录（按登录用户目录分隔）
     public static void saveHistory(String loginUser, String contactUser, List<Message> messages) {
         File userDir = new File(HISTORY_ROOT, loginUser);
-        if (!userDir.exists()) userDir.mkdirs();  // 自动创建 logs/用户名 目录
+        if (!userDir.exists()) userDir.mkdirs();
 
-        File file = new File(userDir, contactUser + ".json"); // logs/admin/user1.json
+        File file = new File(userDir, contactUser + ".json");
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
             gson.toJson(messages, writer);
         } catch (IOException e) {
@@ -24,11 +28,10 @@ public class ChatHistory {
         }
     }
 
-    // 加载聊天记录（按登录用户目录）
+    // 加载聊天记录
     public static List<Message> loadHistory(String loginUser, String contactUser) {
         File file = new File(HISTORY_ROOT + "/" + loginUser, contactUser + ".json");
         if (!file.exists()) return new ArrayList<>();
-
         try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
             Message[] msgs = gson.fromJson(reader, Message[].class);
             return msgs != null ? Arrays.asList(msgs) : new ArrayList<>();
@@ -38,7 +41,7 @@ public class ChatHistory {
         }
     }
 
-    // 加载当前用户的所有聊天记录（Map<对方用户名, 消息列表>）
+    // 加载当前用户的所有聊天记录
     public static Map<String, List<Message>> loadAll(String loginUser) {
         Map<String, List<Message>> historyMap = new HashMap<>();
         File userDir = new File(HISTORY_ROOT, loginUser);
@@ -54,12 +57,10 @@ public class ChatHistory {
         return historyMap;
     }
 
-    // 批量保存当前登录用户的所有聊天记录
+    // 批量保存
     public static void saveAll(String loginUser, Map<String, List<Message>> historyMap) {
         for (Map.Entry<String, List<Message>> entry : historyMap.entrySet()) {
             saveHistory(loginUser, entry.getKey(), entry.getValue());
         }
     }
-
-
 }

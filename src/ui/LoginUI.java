@@ -12,6 +12,9 @@ import model.Message;
 import model.User;
 
 public class LoginUI extends JFrame {
+    private static final String DEFAULT_SERVER_IP = "chatclient.asia";
+    private static final int DEFAULT_SERVER_PORT = 8080;
+
     public LoginUI() {
         setTitle("登录");
         setSize(420, 360);
@@ -41,7 +44,7 @@ public class LoginUI extends JFrame {
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 10, 10));
 
         JPanel formPanel = new JPanel();
-        formPanel.setBackground(Color.WHITE);
+        formPanel.setBackground(Color.white);
         formPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbcCenter = new GridBagConstraints();
         gbcCenter.fill = GridBagConstraints.NONE;
@@ -54,10 +57,10 @@ public class LoginUI extends JFrame {
         formPanel.setBorder(BorderFactory.createEmptyBorder(10, 40, 10, 40));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 4, 10, 4);
+        gbc.insets = new Insets(10, 10, 10, 10); // 统一边距
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JTextField ipField = new JTextField("127.0.0.1");
+        JTextField ipField = new JTextField("");
         ipField.setFont(new Font("微软雅黑", Font.PLAIN, 14));
         ipField.setPreferredSize(new Dimension(280, 36));
         JTextField portField = new JTextField("8080");
@@ -72,51 +75,138 @@ public class LoginUI extends JFrame {
 
         Font labelFont = new Font("微软雅黑", Font.PLAIN, 14);
 
+
+        // ===== 统一输入框尺寸 =====
+        Dimension inputSize = new Dimension(280, 36);
+        ipField.setPreferredSize(inputSize);
+        portField.setPreferredSize(inputSize);
+        usernameField.setPreferredSize(inputSize);
+        passwordField.setPreferredSize(inputSize);
+        // 高级设置面板（服务器设置）
+        JPanel advancedPanel = new JPanel(new GridBagLayout());
+        advancedPanel.setBackground(Color.white);
+        advancedPanel.setVisible(false); // 初始隐藏
+        advancedPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+
+        //高级设置：服务器 IP
         gbc.gridx = 0;
         gbc.gridy = 0;
-        formPanel.add(new JLabel("服务器 IP:", JLabel.LEFT) {{
-            setFont(labelFont);
-        }}, gbc);
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        advancedPanel.add(new JLabel("服务器 IP:") {{ setFont(labelFont); }}, gbc);
+
         gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        formPanel.add(ipField, gbc);
+        advancedPanel.add(ipField, gbc);
+
+        // 高级设置：端口号
         gbc.gridx = 0;
         gbc.gridy = 1;
-        formPanel.add(new JLabel("端口号:", JLabel.LEFT) {{
-            setFont(labelFont);
-        }}, gbc);
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        gbc.anchor = GridBagConstraints.EAST;
+        advancedPanel.add(new JLabel("端口号:") {{ setFont(labelFont); }}, gbc);
+
         gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        formPanel.add(portField, gbc);
+        gbc.anchor = GridBagConstraints.WEST;
+        advancedPanel.add(portField, gbc);
 
+
+
+
+        // 用户名
+        gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0;
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.fill = GridBagConstraints.NONE;
         gbc.gridx = 0;
-        gbc.gridy = 2;
-        formPanel.add(new JLabel("用户名:", JLabel.LEFT) {{
-            setFont(labelFont);
-        }}, gbc);
+        formPanel.add(new JLabel("用户名:") {{ setFont(labelFont); }}, gbc);
+
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         formPanel.add(usernameField, gbc);
 
+        //密码
+        gbc.gridy = 2;
         gbc.gridx = 0;
-        gbc.gridy = 3;
-        formPanel.add(new JLabel("密码:", JLabel.LEFT) {{
-            setFont(labelFont);
-        }}, gbc);
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        formPanel.add(new JLabel("密码:") {{ setFont(labelFont); }}, gbc);
+
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         formPanel.add(passwordField, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        formPanel.add(advancedPanel, gbc);
+        //记住密码复选框
+        JCheckBox rememberCheckBox = new JCheckBox("记住密码");
+        rememberCheckBox.setFont(labelFont);
+        rememberCheckBox.setBackground(Color.white);
+        JCheckBox showAdvancedCheckBox = new JCheckBox("显示高级设置");
+        showAdvancedCheckBox.setFont(labelFont);
+        showAdvancedCheckBox.setBackground(Color.white);
+        showAdvancedCheckBox.addActionListener(e -> {
+            ipField.setText(null);
+            portField.setText(null);
+            advancedPanel.setVisible(showAdvancedCheckBox.isSelected());
+            pack(); // 调整窗口大小
+
+        });
+
+        gbc.gridy = 4;
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        formPanel.add(rememberCheckBox, gbc);
+        gbc.gridy = 4;
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        formPanel.add(showAdvancedCheckBox, gbc);
+
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         buttonPanel.setBackground(Color.WHITE);
+//        JButton advancedButton = new JButton("高级") {
+//            @Override
+//            protected void paintComponent(Graphics g) {
+//                g.setColor(getModel().isRollover() ? new Color(230, 230, 230) : Color.WHITE);
+//                g.fillRect(0, 0, getWidth(), getHeight());
+//                g.setColor(Color.BLACK);
+//                g.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
+//                super.paintComponent(g);
+//            }
+//        };
+//        advancedButton.setBackground(Color.white);
+//        advancedButton.setFocusPainted(false);
+//        advancedButton.setBorder(BorderFactory.createLineBorder(Color.black));
+//        advancedButton.setContentAreaFilled(false);
+//        advancedButton.setOpaque(true);
+//        advancedButton.setPreferredSize(new Dimension(100, 36));
+//
+//        advancedButton.addActionListener(e -> {
+//            ipField.setText(null);
+//            portField.setText(null);
+//            advancedPanel.setVisible(!advancedPanel.isVisible());
+//            pack(); // 调整窗口大小
+//        });
 
         JButton loginButton = new JButton("登录") {
             @Override
@@ -157,8 +247,13 @@ public class LoginUI extends JFrame {
             // 禁用按钮防止重复点击
             loginButton.setEnabled(false);
 
-            String ip = ipField.getText().trim();
-            String port = portField.getText().trim();
+//            String ip = ipField.getText().trim();
+//            String port = portField.getText().trim();
+            // 改为使用默认值
+            String ip = advancedPanel.isVisible() ? ipField.getText().trim() : DEFAULT_SERVER_IP;
+            String port = advancedPanel.isVisible() ? portField.getText().trim() : String.valueOf(DEFAULT_SERVER_PORT);
+
+
             String username = usernameField.getText().trim();
             String password = new String(passwordField.getPassword()).trim();
 
@@ -183,6 +278,12 @@ public class LoginUI extends JFrame {
                             AppState.getInstance().setNetIO(NetIO.getInstance());
                             AppState.getInstance().setCurrentUser(new User(username,password));
                             SwingUtilities.invokeLater(() -> {
+                                if (rememberCheckBox.isSelected()) {
+                                    RememberMe.save(username, password);
+                                } else {
+                                    RememberMe.clear();
+                                }
+
                                 ChatUI.main(null); // 登录成功进入主界面
                                 dispose(); // 关闭登录窗口
                             });
@@ -219,8 +320,8 @@ public class LoginUI extends JFrame {
 
 
         registerButton.addActionListener(e -> {
-            String ip = ipField.getText().trim();
-            String port = portField.getText().trim();
+            String ip = advancedPanel.isVisible() ? ipField.getText().trim() : DEFAULT_SERVER_IP;
+            String port = advancedPanel.isVisible() ? portField.getText().trim() : String.valueOf(DEFAULT_SERVER_PORT);
             if (ip.isEmpty() || port.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "请先填写 IP 和端口", "提示", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -277,10 +378,17 @@ public class LoginUI extends JFrame {
 
         buttonPanel.add(loginButton);
         buttonPanel.add(registerButton);
+//        buttonPanel.add(advancedButton);
 
         mainPanel.add(titleLabel, BorderLayout.NORTH);
         mainPanel.add(formPanel, BorderLayout.CENTER);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        String[] saved = RememberMe.load();
+        if (saved != null) {
+            usernameField.setText(saved[0]);
+            passwordField.setText(saved[1]);
+            rememberCheckBox.setSelected(true);
+        }
 
         add(mainPanel);
     }
