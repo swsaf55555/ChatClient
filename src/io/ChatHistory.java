@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class ChatHistory {
-    // 修改后的根目录为：我的文档\ChatClient\logs
+    // 根目录为：我的文档\ChatClient\logs
     private static final String HISTORY_ROOT = new File(
             new File(System.getProperty("user.home"), "Documents"), "ChatClient/logs"
     ).getAbsolutePath();
