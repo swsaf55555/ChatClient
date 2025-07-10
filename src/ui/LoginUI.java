@@ -36,7 +36,7 @@ public class LoginUI extends JFrame {
         mainPanel.setBackground(Color.WHITE);
         mainPanel.setLayout(new BorderLayout());
 
-        JLabel titleLabel = new JLabel("欢迎使用聊天系统", JLabel.CENTER);
+        JLabel titleLabel = new JLabel("ChatClient-1.0", JLabel.CENTER);
         titleLabel.setFont(new Font("微软雅黑", Font.BOLD, 22));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 10, 10));
 

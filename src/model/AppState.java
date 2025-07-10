@@ -1,5 +1,6 @@
 package model;
 
+import com.google.gson.JsonObject;
 import io.NetIO;
 import ui.ChatUI;
 
@@ -17,6 +18,10 @@ public class AppState {
     private final Map<String, List<Message>> messageHistory;
 
     private NetIO netIO; //
+    private boolean friendsLoaded = false;
+
+
+
 
     private AppState() {
         onlineUsers = new CopyOnWriteArrayList<>();
@@ -72,4 +77,6 @@ public class AppState {
     public List<Message> getMessages(String chatWith) {
         return messageHistory.getOrDefault(chatWith, new ArrayList<>());
     }
+
+
 }

@@ -1,5 +1,8 @@
 package ui;
 
+import chat.Chat;
+import model.AppState;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -12,7 +15,7 @@ public class InformationUI extends JFrame {
     private  String nickName;
     private  String username;
 
-    public InformationUI(String username,String nickName) {
+    public InformationUI(String username,String nickName,String friendNum) {
         this.nickName=nickName;
         this.username=username;
         setTitle("个人信息");
@@ -48,9 +51,9 @@ public class InformationUI extends JFrame {
 
         usernameField = new JTextField(username);
         nicknameField = new JTextField(nickName);
-        friendCountField = new JTextField("12");
+        friendCountField = new JTextField(friendNum);
 
-        JTextField[] fields = {usernameField, nicknameField};
+        JTextField[] fields = {usernameField, friendCountField};
         for (JTextField field : fields) {
             field.setFont(labelFont);
             field.setPreferredSize(new Dimension(320, 36));
@@ -71,30 +74,58 @@ public class InformationUI extends JFrame {
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
-        formPanel.add(nicknameField, gbc);
+       formPanel.add(nicknameField, gbc);
 
         gbc.gridx = 0; gbc.gridy = 2;
-        //formPanel.add(new JLabel("好友数量:") {{ setFont(labelFont); }}, gbc);
+        formPanel.add(new JLabel("好友数量:") {{ setFont(labelFont); }}, gbc);
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
-        //formPanel.add(friendCountField, gbc);
+        formPanel.add(friendCountField, gbc);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBackground(Color.WHITE);
 
-        editButton = createFlatButton("编辑");
+        editButton = createFlatButton("注销");
         saveButton = createFlatButton("保存");
         saveButton.setVisible(false);
         okButton = createFlatButton("确定");
 
         editButton.addActionListener(e -> {
-            if (!isEditing) {
-                nicknameField.setEditable(true);
-                nicknameField.requestFocus();
-                isEditing = true;
-                okButton.setText("取消");
+//            if (!isEditing) {
+//                nicknameField.setEditable(true);
+//                nicknameField.requestFocus();
+//                isEditing = true;
+//                okButton.setText("取消");
+//            }
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "注销账号将删除账号所有信息，无法恢复，是否继续？",
+                    "确认注销账号",
+                    JOptionPane.YES_NO_OPTION
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                String input = JOptionPane.showInputDialog(
+                        this,
+                        "请输入“确认删除”以继续：",
+                        "确认操作",
+                        JOptionPane.WARNING_MESSAGE
+                );
+
+                if (input != null && input.trim().equals("确认删除")) {
+                    // 构造注销请求
+                    Chat.sendDelete(AppState.getInstance().getCurrentUser().getUsername(),
+                            AppState.getInstance().getCurrentUser().getPasswd());
+                } else {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "输入错误，注销操作已取消",
+                            "取消操作",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                }
             }
         });
 
@@ -154,6 +185,6 @@ public class InformationUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new InformationUI(args[0],args[1]).setVisible(true));
+        SwingUtilities.invokeLater(() -> new InformationUI(args[0],args[1],args[2]).setVisible(true));
     }
 }

@@ -3,10 +3,8 @@ package chat;
 import com.google.gson.*;
 import model.AppState;
 import model.Message;
-import model.User;
 import io.NetIO;
 import ui.ChatUI;
-import ui.LoginUI;
 
 import javax.swing.*;
 
@@ -115,6 +113,16 @@ public class Chat {
         json.addProperty("passwd", password);
         NetIO.getInstance().send(json.toString());
     }
+    /*
+    * 注销请求
+    * */
+    public static void sendDelete(String username,String password){
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "delete");
+        json.addProperty("username", username);
+        json.addProperty("passwd", password);
+        NetIO.getInstance().send(json.toString());
+    }
 
     /**
      * 解析从服务端收到的 JSON 消息，转为 Message 对象
@@ -143,20 +151,19 @@ public class Chat {
 
                     //return message.getSender()+message.getMessage();
                 }
-                case "offlineMessage"->{
-                    System.out.println("收到offlineMessage");
-                    System.out.println(message.getMessage()+message.getType()+message.getSender());
-                    SwingUtilities.invokeLater(
-                            ()-> {
-                                JsonObject data = JsonParser.parseString(jsonStr).getAsJsonObject();
-                                long time = data.get("time").getAsLong();
-                                ChatUI.getInstance().ReceiveMessage(message.getSender(), message.getMessage(),time);
-                                ChatUI.getInstance().setContactNewInform(message.getSender());
-                            }
-                    );
+                case "offlineMessage" -> {
+                    JsonObject data = JsonParser.parseString(jsonStr).getAsJsonObject();
 
-                    //return message.getSender()+message.getMessage();
+                    long time = data.get("time").getAsLong();
+                    String sender = data.get("sender").getAsString();
+                    String msg = data.get("message").getAsString();
+
+                    SwingUtilities.invokeLater(() -> {
+                        ChatUI.getInstance().ReceiveMessage(sender, msg, time);
+                        ChatUI.getInstance().setContactNoreadInform(sender, 1);
+                    });
                 }
+
                 case "heartbeat"->{
                     SwingUtilities.invokeLater(
                             ()->{
@@ -175,10 +182,11 @@ public class Chat {
                                     JsonObject friendObj = element.getAsJsonObject();
                                     String username = friendObj.get("username").getAsString();
                                     String remark = friendObj.get("remark").getAsString();
-                                    ChatUI.getInstance().addContact(username,0);
+                                    ChatUI.getInstance().addContact(username);
                                 }
                             }
                     );
+
 
                 }
                 case "add_friend"->{
@@ -198,6 +206,40 @@ public class Chat {
                             }
                     );
 
+                }
+                case "delete"->{
+                    System.out.println("收到detele");
+                    SwingUtilities.invokeLater(
+                            ()->{
+                                JsonObject data=JsonParser.parseString(jsonStr).getAsJsonObject();
+                                if(data.has("status") &&data.get("status").getAsString().equals("ok")){
+                                    JOptionPane.showMessageDialog(ChatUI.getInstance(), "注销成功！你的账户已被删除", "注销成功", JOptionPane.INFORMATION_MESSAGE);
+                                    ChatUI.getInstance().logout();
+
+                                }else{
+                                    JOptionPane.showMessageDialog(ChatUI.getInstance(), data.get("message").getAsString() , "注销失败", JOptionPane.ERROR_MESSAGE);
+                                }
+
+                            }
+
+                    );
+                }
+                case "remove_friend"->{
+                    System.out.println("收到remove");
+                    SwingUtilities.invokeLater(
+                            ()->{
+                                JsonObject data=JsonParser.parseString(jsonStr).getAsJsonObject();
+                                if(data.has("status") &&data.get("status").getAsString().equals("ok")){
+                                    String username=data.get("message").getAsString();
+                                    ChatUI.getInstance().removeContact(username);
+                                    JOptionPane.showMessageDialog(ChatUI.getInstance(), "删除成功！你的列表中将不会有他的信息", "删除成功", JOptionPane.INFORMATION_MESSAGE);
+
+                                }else{
+                                    JOptionPane.showMessageDialog(ChatUI.getInstance(), data.get("message").getAsString() , "删除失败", JOptionPane.ERROR_MESSAGE);
+                                }
+
+                            }
+                    );
                 }
             }
         }

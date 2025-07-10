@@ -4,12 +4,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 
 import chat.Chat;
-import com.google.gson.JsonParser;
+import com.google.gson.JsonObject;
 import io.ChatHistory;
 import io.NetIO;
 import model.*;
@@ -66,7 +65,8 @@ public class ChatUI extends JFrame {
         myInformation.addActionListener(e ->
                 InformationUI.main(new String[]{
                         AppState.getInstance().getCurrentUser().getUsername(),
-                        AppState.getInstance().getCurrentUser().getNickname()
+                        AppState.getInstance().getCurrentUser().getNickname(),
+                       Integer.toString(contactsModel.getSize())
                 })
         );
         logout.addActionListener(
@@ -103,6 +103,35 @@ public class ChatUI extends JFrame {
 
         contactsList = new JList<>(contactsModel);
         contactsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JPopupMenu popupMenu = new JPopupMenu();
+        JMenuItem deleteItem = new JMenuItem("删除联系人");
+        popupMenu.add(deleteItem);
+        contactsList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    int index = contactsList.locationToIndex(e.getPoint());
+                    if (index != -1) {
+                        contactsList.setSelectedIndex(index); // 设置选中项
+                        popupMenu.show(contactsList, e.getX(), e.getY());
+                    }
+                }
+            }
+        });
+        deleteItem.addActionListener(e -> {
+            String target = contactsList.getSelectedValue().name;
+            int confirm = JOptionPane.showConfirmDialog(
+                    ChatUI.getInstance(),
+                    "确认删除联系人 " + target + " 吗？",
+                    "删除联系人",
+                    JOptionPane.YES_NO_OPTION
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                Chat.sendRemoveFriend(AppState.getInstance().getCurrentUser().getUsername(),target);
+            }
+        });
+
         contactsList.setCellRenderer(new ListCellRenderer<Contact>() {
             @Override
             public Component getListCellRendererComponent(JList<? extends Contact> list, Contact contact, int index,
@@ -172,6 +201,7 @@ public class ChatUI extends JFrame {
                     currentContactName=selected.name;
                     updateChatPanel(selected.name);
                     loadHistoryToChatPanel(selected.name);
+                    setContactNoreadInform(selected.name,0);
                     contactsList.repaint();
                 }
             }
@@ -184,7 +214,7 @@ public class ChatUI extends JFrame {
     }
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            ChatUI.getInstance().setVisible(true);
+            ChatUI.getInstance().setVisible(false);
             // 登录成功后执行
             Chat.sendRequestContacts(AppState.getInstance().getCurrentUser().getUsername());
             AppState app = AppState.getInstance();
@@ -197,6 +227,8 @@ public class ChatUI extends JFrame {
                 }
             }
             ChatUI.getInstance().setOline();
+            ChatUI.getInstance().setVisible(true);
+
             // 模拟 3 秒后收到一条消息
 //            new Timer(3000, e -> ui.simulateReceiveMessage("Alice", "你好这是一条模拟消息！")).start();
 //            new Timer(5000, e -> ui.simulateReceiveMessage("联系人5", "你好这是一条模拟消息！")).start();
@@ -510,33 +542,39 @@ public class ChatUI extends JFrame {
         if (fromName.equals(currentContactName)) {
             addMessageBubble(fromName, message, false);
             received=true;
-        } else {
+        }else {
             for (int i = 0; i < contactsModel.getSize(); i++) {
                 Contact c = contactsModel.getElementAt(i);
                 if (c.name.equals(fromName)) {
-                    received=true;
-                    c.unreadCount++;
+                    received = true;
+                    if(c.unreadCount!=-1) {
+                        c.unreadCount++;
+                    }
                     break;
                 }
             }
-            contactsList.repaint();
         }
+        contactsList.repaint();
+
         if(!received){
             addContact(fromName,"default_1.jpg",1);
             if (fromName.equals(currentContactName)) {
                 addMessageBubble(fromName, message, false);
                 received=true;
-            } else {
+            }else {
                 for (int i = 0; i < contactsModel.getSize(); i++) {
                     Contact c = contactsModel.getElementAt(i);
                     if (c.name.equals(fromName)) {
-                        received=true;
-                        c.unreadCount++;
+                        received = true;
+                        if(c.unreadCount!=-1) {
+                            c.unreadCount++;
+                        }
                         break;
                     }
                 }
-                contactsList.repaint();
             }
+            contactsList.repaint();
+
         }
     }
     public  void ReceiveMessage(String fromName, String message,long time) {
@@ -547,34 +585,41 @@ public class ChatUI extends JFrame {
         if (fromName.equals(currentContactName)) {
             addMessageBubble(fromName, message, false,time);
             received=true;
-        } else {
+        }else {
             for (int i = 0; i < contactsModel.getSize(); i++) {
                 Contact c = contactsModel.getElementAt(i);
                 if (c.name.equals(fromName)) {
-                    received=true;
-                    c.unreadCount++;
+                    received = true;
+                    if(c.unreadCount!=-1) {
+                        c.unreadCount++;
+                    }
                     break;
                 }
             }
-            contactsList.repaint();
         }
+        contactsList.repaint();
+
         if(!received){
             addContact(fromName,"default_1.jpg",1);
             if (fromName.equals(currentContactName)) {
                 addMessageBubble(fromName, message, false,time);
                 received=true;
-            } else {
+            }else {
                 for (int i = 0; i < contactsModel.getSize(); i++) {
                     Contact c = contactsModel.getElementAt(i);
                     if (c.name.equals(fromName)) {
-                        received=true;
-                        c.unreadCount++;
+                        received = true;
+                        if(c.unreadCount!=-1) {
+                            c.unreadCount++;
+                        }
                         break;
                     }
                 }
-                contactsList.repaint();
             }
+            contactsList.repaint();
         }
+
+
     }
     public void updateTile(String title){
         this.setTitle(title);
@@ -592,6 +637,24 @@ public class ChatUI extends JFrame {
         }
         contactsModel.addElement(new Contact(name,loadAvatar("default_2.jpg"),unreadCount));
     }
+    public void addContact(String name){
+        boolean notChangUnread=false;
+        int unread=0;
+        for (int i = 0; i < contactsModel.getSize(); i++) {
+            Contact c = contactsModel.getElementAt(i);
+            if (c.name.equals(name)) {
+                unread=c.unreadCount;
+                contactsModel.removeElement(c);
+                notChangUnread=true;
+            }
+        }
+        if(!notChangUnread){
+            contactsModel.addElement(new Contact(name,loadAvatar("default_2.jpg"),0));
+        }else{
+            contactsModel.addElement(new Contact(name,loadAvatar("default_2.jpg"),unread));
+        }
+
+    }
     public void addContact(String name,String avatar,int unreadCount){
         for (int i = 0; i < contactsModel.getSize(); i++) {
             Contact c = contactsModel.getElementAt(i);
@@ -601,14 +664,23 @@ public class ChatUI extends JFrame {
         }
         contactsModel.addElement(new Contact(name,loadAvatar(avatar),unreadCount));
     }
-    public void setContactNewInform(String name){
+    public void removeContact(String name){
         for (int i = 0; i < contactsModel.getSize(); i++) {
             Contact c = contactsModel.getElementAt(i);
             if (c.name.equals(name)) {
-                c.unreadCount++;
+                contactsModel.removeElement(c);
+            }
+        }
+    }
+    public void setContactNoreadInform(String name, int unreadCount){
+        for (int i = 0; i < contactsModel.getSize(); i++) {
+            Contact c = contactsModel.getElementAt(i);
+            if (c.name.equals(name)) {
+                c.unreadCount=unreadCount;
                 break;
             }
         }
+        contactsList.repaint();
     }
     public void setOffline(){
         online=false;
@@ -617,6 +689,22 @@ public class ChatUI extends JFrame {
     public void setOline(){
         online=true;
         updateTile(AppState.getInstance().getCurrentUser().getUsername()+" - 在线");
+    }
+    public void logout(){
+        Chat.sendLogout(AppState.getInstance().getCurrentUser().getUsername(),
+                AppState.getInstance().getCurrentUser().getPasswd());
+
+        NetIO.getInstance().disconnect();
+        NetIO.resetInstance();
+        // 清除用户状态
+        AppState.getInstance().setCurrentUser(null);
+        AppState.getInstance().setNetIO(null);
+        AppState.resetInstance();
+        // 返回登录界面
+        new LoginUI().setVisible(true);
+        // 关闭主界面
+        ChatUI.getInstance().dispose();
+        ChatUI.resetInstance();
     }
     class Contact {
         String name;
