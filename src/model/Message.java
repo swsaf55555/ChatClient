@@ -36,7 +36,12 @@ public class Message {
         this.sender=sender;
         this.target=target;
         this.message=message;
-        this.timestamp=System.currentTimeMillis();
+        if(timestamp==1){
+            this.timestamp=System.currentTimeMillis();
+        }else{
+            this.timestamp=timestamp;
+        }
+
     }
     public Message(String type,String username,String passwd,String target,String message,boolean isChat){
         this.type=type;

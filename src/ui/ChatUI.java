@@ -579,7 +579,7 @@ public class ChatUI extends JFrame {
     }
     public  void ReceiveMessage(String fromName, String message,long time) {
         boolean received=false;
-        Message message1 = new Message(fromName,AppState.getInstance().getCurrentUser().getUsername(),message,1);
+        Message message1 = new Message(fromName,AppState.getInstance().getCurrentUser().getUsername(),message,time);
         AppState.getInstance().addMessage(fromName, message1);
         ChatHistory.saveHistory(AppState.getInstance().getCurrentUser().getUsername(),fromName, AppState.getInstance().getMessages(fromName));
         if (fromName.equals(currentContactName)) {
